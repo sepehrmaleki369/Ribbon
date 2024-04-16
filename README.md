@@ -6,3 +6,7 @@ This repository is official Pytorch implementation for the paper [Adjusting the 
 </p>
 
 Figure 1. **Our approach.** To account for annotation inaccuracies during training, we jointly train the network and adjust the annotations while preserving their topology.
+
+
+
+This project was partly funded from the FWF Austrian Science Fund's Lise Meitner Program, project number M3374.
