@@ -23,7 +23,7 @@ class SynthDataset(Dataset):
         self.graphs = graph_path["train"] if train and not noise else graph_path["noise"] if train and noise else graph_path["val"]
             
         self.train = train
-        self.cropSize = cropSize
+        self.cropSize = cropSize 
         self.th = th
         
     def __getitem__(self, index):
