@@ -7,18 +7,20 @@ from .utils import load_graph_txt, to_torch
 
 class SynthDataset(Dataset):
     
-    def __init__(self, train=True, cropSize=(96,96,96), th=15):
+    def __init__(self, train=True, cropSize=(96,96,96), th=15, noise=False):
         
         image_path = {"train": ["./Synth/images/data_{}.npy".format(i) for i in range(20)],
                       "val":  ["./Synth/images/data_{}.npy".format(i) for i in range(20,30)]}
         label_path = {"train": ["./Synth/dist_labels/data_{}.npy".format(i) for i in range(20)],
+                      "noise": ["./Synth/noise_2_dist_labels/data_{}.npy".format(i) for i in range(20)],
                       "val":  ["./Synth/dist_labels/data_{}.npy".format(i) for i in range(20,30)]}
         graph_path = {"train": ["./Synth/graphs/data_{}.graph".format(i) for i in range(20)],
+                      "noise": ["./Synth/noise_2_graphs/data_{}.graph".format(i) for i in range(20)],
                       "val":  ["./Synth/graphs/data_{}.graph".format(i) for i in range(20,30)]}
         
         self.images = image_path["train"] if train else image_path["val"]
-        self.labels = label_path["train"] if train else label_path["val"]
-        self.graphs = graph_path["train"] if train else graph_path["val"]
+        self.labels = label_path["train"] if train and not noise else label_path["noise"] if train and noise else label_path["val"]
+        self.graphs = graph_path["train"] if train and not noise else graph_path["noise"] if train and noise else graph_path["val"]
             
         self.train = train
         self.cropSize = cropSize
