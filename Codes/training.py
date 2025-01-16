@@ -103,6 +103,7 @@ class TrainingEpoch(object):
             preds = network(images.contiguous())
             
             if self.ours and iterations >= self.ours_start:
+            # calls forward on loss here, and snake is adjusted
                 loss = our_loss(preds, graphs, slices)
             else:
                 loss = base_loss(preds, labels)
@@ -117,6 +118,7 @@ class TrainingEpoch(object):
             mean_loss += loss_v
             optimizer.zero_grad()
             loss.backward()
+            # optimizer optimizes the network parameters
             optimizer.step()
 
             if lr_scheduler is not None:

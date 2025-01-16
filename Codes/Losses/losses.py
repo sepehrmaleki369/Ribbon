@@ -63,15 +63,20 @@ class SnakeFastLoss(nn.Module):
         return self
 
     def forward(self,pred_dmap,lbl_graphs,crops=None):
-    
+    # pred_dmap is the predicted distance map from the UNet (why isn't it a probability map???)
+    # lbl_graphs contains graphs each represent a label as a snake (not exactly a snake but a graph which represents a snake) / not snake class
+    # crops is a list of slices, each represents the crop area of the corresponding snake
+
         pred_ = pred_dmap
         gimg = gradImSnake.cmptGradIm(pred_,self.fltrt)
         gimg *= self.extgradfac
         snake_dmap = []
 
         for i,lg in enumerate(zip(lbl_graphs,gimg)):
-            l = lg[0]
-            g = lg[1]
+            # i is index num
+            # lg is a tuple of a graph and a gradient image
+            l = lg[0] # graph
+            g = lg[1] # gradient image
 
             if crops:
                 crop = crops[i]
@@ -146,6 +151,7 @@ class SnakeSimpleLoss(nn.Module):
             if np.sum(lbl) == 0:
                 dmap = self.dmax * np.ones(lbl.shape)
             else:
+                # the distance map is calculated here from the probability map
                 dmap = dist(1-lbl)
                 dmap[dmap > self.dmax] = self.dmax
                 
