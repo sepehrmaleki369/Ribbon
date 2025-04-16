@@ -3,6 +3,7 @@ from torch import nn
 import numpy as np
 from scipy.ndimage.morphology import distance_transform_edt as dist
 from . import gradImSnake
+import ribsnake
 
 class MSELoss(nn.Module):
 
@@ -77,19 +78,16 @@ class SnakeFastLoss(nn.Module):
             # lg is a tuple of a graph and a gradient image
             l = lg[0] # graph
             g = lg[1] # gradient image
-
-            if crops:
-                crop = crops[i]
-            else:
-                crop=[slice(0,s) for s in g.shape[1:]]
-            s = gradImSnake.GradImSnake(l,crop,self.stepsz,self.alpha,
-                                      self.beta,self.ndims,g)
+            
+            #s = gradImSnake.GradImSnake(l,crop,self.stepsz,self.alpha,self.beta,self.ndims,g)
+            gimgW = torch.abs(g).clone()
+            s = ribsnake.RibbonSnake(graph=l,crop=crop,stepsz=self.stepsz,alpha=self.alpha,
+                                     beta=self.beta,gimgN=g,gimgW=gimgW,step_type="original",ndims=self.ndims)
             if self.iscuda: s.cuda()
 
             s.optim(self.nsteps)
-
-            dmap = s.renderDistanceMap(g.shape[1:],self.cropsz,self.dmax,
-                                     self.maxedgelen)
+            dmap = s.render_distance_map(self.cropsz)
+            #dmap = s.renderDistanceMap(g.shape[1:],self.cropsz,self.dmax,self.maxedgelen)
             snake_dmap.append(dmap)
 
         snake_dm = torch.stack(snake_dmap,0).unsqueeze(1)

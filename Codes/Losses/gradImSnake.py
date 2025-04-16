@@ -21,14 +21,14 @@ def makeGaussEdgeFltr(stdev,d):
 
     fsz=round(2*stdev)*2+1 # filter size - make the it odd
 
-    n=np.arange(0,fsz).astype(np.float)-(fsz-1)/2.0
+    n=np.arange(0,fsz).astype(float)-(fsz-1)/2.0
     s2=stdev*stdev
     v=np.exp(-n**2/(2*s2)) # a Gaussian
     g=n/s2*v # negative Gaussian derivative
 
     # create filter sensitive to edges along dim0
     # by outer product of vectors
-    shps = np.eye(d,dtype=np.int)*(fsz-1)+1
+    shps = np.eye(d,dtype=int)*(fsz-1)+1
     reshaped = [x.reshape(y) for x,y in zip([g]+[v]*(d-1), shps)]
     fltr=reduce(np.multiply,reshaped)
     fltr=fltr/np.sum(np.abs(fltr))
