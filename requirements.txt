@@ -1,8 +1,8 @@
-torch==1.13.1
-torchvision==0.14.1
-networkx==3.0
-numpy==1.22.4
+torch==2.1.2
+torchvision==0.16.2
+networkx==3.1
+numpy==1.23.5  # Using older NumPy for compatibility with scikit-image 0.18.3
 PyYAML==6.0
-scikit-image==0.19.1
-scipy==1.7.3
-Shapely==1.8.0
+scikit-image==0.18.3  # specified version
+scipy==1.10.1  # Compatible with NumPy 1.23.5
+Shapely==2.0.1
