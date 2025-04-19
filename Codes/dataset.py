@@ -11,9 +11,11 @@ class SynthDataset(Dataset):
         
         image_path = {"train": ["/content/drive/MyDrive/synth_data/images/data_{}.npy".format(i) for i in range(20)],
                       "val":  ["/content/drive/MyDrive/synth_data/images/data_{}.npy".format(i) for i in range(20,30)]}
-        label_path = {"train": ["/content/drive/MyDrive/synth_data/dist_labels/data_{}.npy".format(i) for i in range(20)],
+
+        label_path = {"train": ["/content/drive/MyDrive/synth_data/noise_2_dist_labels/data_{}.npy".format(i) for i in range(20)],
                       "noise": ["/content/drive/MyDrive/synth_data/noise_2_dist_labels/data_{}.npy".format(i) for i in range(20)],
-                      "val":  ["/content/drive/MyDrive/synth_data/dist_labels/data_{}.npy".format(i) for i in range(20,30)]}
+                      "val":  ["/content/drive/MyDrive/synth_data/noise_2_dist_labels/data_{}.npy".format(i) for i in range(20,30)]}
+
         graph_path = {"train": ["/content/drive/MyDrive/synth_data/graphs/data_{}.graph".format(i) for i in range(20)],
                       "noise": ["/content/drive/MyDrive/synth_data/noise_2_graphs/data_{}.graph".format(i) for i in range(20)],
                       "val":  ["/content/drive/MyDrive/synth_data/graphs/data_{}.graph".format(i) for i in range(20,30)]}

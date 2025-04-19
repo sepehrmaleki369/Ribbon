@@ -2,6 +2,7 @@ import time
 import numpy as np
 import os
 import logging
+import torch
 from . import utils
 from skimage.morphology import skeletonize_3d
 from .scores import correctness_completeness_quality
@@ -123,6 +124,9 @@ class TrainingEpoch(object):
 
             if lr_scheduler is not None:
                 lr_scheduler.step()
+
+            if torch.cuda.is_available() and iterations % 10 == 0:
+                torch.cuda.empty_cache()
 
         return {"loss": float(mean_loss/len(self.dataloader))}
     

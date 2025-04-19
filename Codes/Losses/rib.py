@@ -1,5 +1,4 @@
-from snake import Snake
-from gradRib import cmptExtGrad
+from .snake import Snake
 import torch
 import torch.nn.functional as F
 import math
