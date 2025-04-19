@@ -69,28 +69,31 @@ class SnakeFastLoss(nn.Module):
         # crops is a list of slices, each represents the crop area of the corresponding snake
 
         pred_ = pred_dmap
+        dmapW = torch.abs(pred_).clone()
+        gimgW = cmptGradIm(dmapW.detach(), self.fltrt)
         gimg = cmptGradIm(pred_.detach(), self.fltrt)
         gimg *= self.extgradfac
+        gimgW *= self.extgradfac
         snake_dmap = []
 
         # Get the output dimensions from pred_dmap
         output_size = pred_dmap.shape[2:]
         device = pred_dmap.device
 
-        for i, lg in enumerate(zip(lbl_graphs, gimg)):
+        for i, lg in enumerate(zip(lbl_graphs, gimg, gimgW)):
             # i is index num
             # lg is a tuple of a graph and a gradient image
             l = lg[0]  # graph
             g = lg[1]  # gradient image
+            gw = lg[2]
 
             if crops:
                 crop = crops[i]
             else:
                 crop = [slice(0, s) for s in g.shape[1:]]
 
-            gimgW = torch.abs(g).clone()
             s = GradImRib(graph=l, crop=crop, stepsz=self.stepsz, alpha=self.alpha,
-                        beta=self.beta,dim=self.ndims, gimgV=g, gimgW=gimgW)
+                        beta=self.beta,dim=self.ndims, gimgV=g, gimgW=gw)
                     
             if self.iscuda: 
                 s.cuda()
