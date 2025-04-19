@@ -2,7 +2,7 @@ import numpy as np
 from functools import reduce
 import torch
 
-from rib import RibbonSnake
+from .rib import RibbonSnake
 
 def makeGaussEdgeFltr(stdev,d):
     # make a Gaussian-derivative-based edge filter

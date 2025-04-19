@@ -3,7 +3,7 @@ import torch
 from torch import nn
 import numpy as np
 from scipy.ndimage.morphology import distance_transform_edt as dist
-from gradRib import GradImRib, makeGaussEdgeFltr, cmptGradIm
+from .gradRib import GradImRib, makeGaussEdgeFltr, cmptGradIm
 
 class MSELoss(nn.Module):
 
