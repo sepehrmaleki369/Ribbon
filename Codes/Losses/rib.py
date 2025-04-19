@@ -4,6 +4,35 @@ import torch
 import torch.nn.functional as F
 import math
 
+def cmptExtGrad(snakepos,eGradIm):
+    # returns the values of eGradIm at positions snakepos
+    # snakepos  is a k X d matrix, where snakepos[j,:] represents a d-dimensional position of the j-th node of the snake
+    # eGradIm   is a tensor containing the energy gradient image, either of size
+    #           3 X d X h X w, for 3D, or of size
+    #           2     X h X w, for 2D snakes
+    # returns a tensor of the same size as snakepos,
+    # containing the values of eGradIm at coordinates specified by snakepos
+    
+    # scale snake coordinates to match the hilarious requirements of grid_sample
+    # we use the obsolote convention, where align_corners=True
+    scale=torch.tensor(eGradIm.shape[1:]).reshape((1,-1)).type_as(snakepos)-1.0
+    sp=2*snakepos/scale-1.0
+    
+    if eGradIm.shape[0]==3:
+        # invert the coordinate order to match other hilarious specs of grid_sample
+        spi=torch.einsum('km,md->kd',[sp,torch.tensor([[0,0,1],[0,1,0],[1,0,0]]).type_as(sp).to(sp.device)])
+        egrad=torch.nn.functional.grid_sample(eGradIm[None],spi[None,None,None],
+                                           align_corners=True)
+        egrad=egrad.permute(0,2,3,4,1)
+    if eGradIm.shape[0]==2:
+        # invert the coordinate order to match other hilarious specs of grid_sample
+        spi=torch.einsum('kl,ld->kd',[sp,torch.tensor([[0,1],[1,0]]).type_as(sp).to(sp.device)])
+        egrad=torch.nn.functional.grid_sample(eGradIm[None],spi[None,None],
+                                           align_corners=True)
+        egrad=egrad.permute(0,2,3,1)
+        
+    return egrad.reshape_as(snakepos)
+
 class RibbonSnake(Snake):
     def __init__(self, graph, crop, stepsz, alpha, beta, dim):
         # In the new version grad will be separate, so image gradients will not be here
