@@ -2,6 +2,7 @@ from snake import Snake
 from gradRib import cmptExtGrad
 import torch
 import torch.nn.functional as F
+import math
 
 class RibbonSnake(Snake):
     def __init__(self, graph, crop, stepsz, alpha, beta, dim):
@@ -9,7 +10,8 @@ class RibbonSnake(Snake):
         # Normal initialization of Snake super class
         super().__init__(graph, crop, stepsz, alpha, beta, dim)
         # Additionally we sample from a normal distrubution for widths of nodes
-        self.w = torch.randn(self.s.shape[0], requires_grad=False)
+        #self.w = torch.randn(self.s.shape[0]).abs()
+        self.w = torch.ones(self.s.shape[0])
 
     def cuda(self):
         super().cuda()
@@ -77,8 +79,8 @@ class RibbonSnake(Snake):
 
         if d == 2:
             (normals,) = self._compute_normals(pos)
-            left_pts  = pos - normals * half_r
-            right_pts = pos + normals * half_r
+            left_pts  = pos - normals * half_r.unsqueeze(1)
+            right_pts = pos + normals * half_r.unsqueeze(1)
 
             grad_L = cmptExtGrad(left_pts,  gimgW)
             grad_R = cmptExtGrad(right_pts, gimgW)
@@ -181,4 +183,5 @@ class RibbonSnake(Snake):
 
         dist = torch.min(dist_capsule, dist_start)
         dist = torch.min(dist, dist_end)
+        #dist.requires_grad_(True)
         return torch.clamp(dist.reshape(*size), max=16)
