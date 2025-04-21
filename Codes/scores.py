@@ -8,7 +8,7 @@ def completeness(TP, FN, eps=1e-12):
     return TP/(TP + FN + eps) # recall
 
 def quality(corr, comp, eps=1e-12):
-    return (comp*corr)/(comp-comp*corr+corr)
+    return (comp*corr)/(comp-comp*corr+corr + eps)
 
 def f1(corr, comp, eps=1e-12):
     return 2.0/(1.0/(corr+eps) + 1.0/(comp+eps))
