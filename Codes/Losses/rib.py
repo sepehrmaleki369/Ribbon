@@ -176,7 +176,9 @@ class RibbonSnake(Snake):
         axes    = [torch.arange(sz, device=device, dtype=torch.float32) for sz in size]
         mesh    = torch.meshgrid(*axes, indexing='ij')
         points  = torch.stack([m.flatten() for m in mesh], dim=1)
-
+        if len(centers) == 0:
+            # Return a distance map filled with maximum distance
+            return torch.full(size, 16.0, device=device)
         # capsule sides
         if centers.shape[0] > 1:
             starts, ends = centers[:-1], centers[1:]
