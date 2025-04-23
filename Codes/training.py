@@ -150,6 +150,8 @@ class Validation(object):
         preds = []
         scores = {"corr":[], "comp":[], "qual":[]}
 
+        drive_output_path = "/content/drive/MyDrive/snake_model_outputs"
+
         network.train(False)
         with utils.torch_no_grad:
             for i, (image, label) in enumerate(self.dataloader_val):
@@ -172,7 +174,7 @@ class Validation(object):
                 label_np = utils.from_torch(label)[0]
                 
                 pred_mask = skeletonize_3d((pred_np <= 0)[0])//255
-                label_mask = (label_np<=0)
+                label_mask = (label_np==0)
 
                 corr, comp, qual = correctness_completeness_quality(pred_mask, label_mask, slack=3)
                 
@@ -180,24 +182,26 @@ class Validation(object):
                 scores["comp"].append(comp)
                 scores["qual"].append(qual)
                 
-                # save the prediction here
+                # save preds
+                pred_outs_path = os.path.join(drive_output_path, "output_valid")
+                utils.mkdir(pred_outs_path)
+
                 output_valid = os.path.join(self.output_path, "output_valid")
                 utils.mkdir(output_valid)
 
-                # Save original input image once per validation sample.
                 input_filename = os.path.join(output_valid, "val_input_{:03d}.npy".format(i))
                 if not os.path.exists(input_filename):
-                    # Convert the input image back to numpy and save.
                     np.save(input_filename, utils.from_torch(image)[0])
 
-                # Save ground truth (label) once per validation sample.
                 gt_filename = os.path.join(output_valid, "val_gt_{:03d}.npy".format(i))
                 if not os.path.exists(gt_filename):
                     np.save(gt_filename, label_np)
 
-                # Save the prediction for this sample at the current epoch.
-                pred_filename = os.path.join(output_valid, "val_pred_{:03d}_epoch_{:06d}.npy".format(i, iteration))
+                pred_filename = os.path.join(pred_outs_path, "val_pred_{:03d}_epoch_{:06d}.npy".format(i, iteration))
                 np.save(pred_filename, pred_np)
+
+                pred_mask_filename = os.path.join(pred_outs_path, "val_predmask_{:03d}_epoch_{:06d}.npy".format(i, iteration))
+                np.save(pred_mask_filename, pred_mask)
 
         scores["qual"] = np.nan_to_num(scores["qual"])
         
