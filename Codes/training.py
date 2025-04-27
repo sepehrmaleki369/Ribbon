@@ -4,7 +4,7 @@ import os
 import logging
 import torch
 from . import utils
-from skimage.morphology import skeletonize_3d
+from skimage.morphology import skeletonize
 from .scores import correctness_completeness_quality
 
 logger = logging.getLogger(__name__)
@@ -96,12 +96,15 @@ class TrainingEpoch(object):
     def __call__(self, iterations, network, optimizer, lr_scheduler, base_loss, our_loss):
         
         mean_loss = 0
-        for images, labels, graphs, slices in self.dataloader:
+        for images, labels, masks, graphs, slices in self.dataloader:
 
             images = images.cuda()
             labels = labels.cuda()
+            masks = masks.cuda()
             
             preds = network(images.contiguous())
+            # apply the mask, it is 1 
+            preds = torch.minimum(preds, masks)
             
             if self.ours and iterations >= self.ours_start:
             # calls forward on loss here, and snake is adjusted
@@ -154,16 +157,19 @@ class Validation(object):
 
         network.train(False)
         with utils.torch_no_grad:
-            for i, (image, label) in enumerate(self.dataloader_val):
+            for i, (image, label, mask) in enumerate(self.dataloader_val):
         
                 image  = image.cuda()[:,None]
                 label  = label.cuda()[:,None]
+                mask   = mask.cuda()[:,None]
 
                 out_shape = (image.shape[0],self.out_channels,*image.shape[2:])
                 pred = utils.to_torch(np.empty(out_shape, np.float32), volatile=True).cuda()
                 pred = utils.process_in_chuncks(image, pred,
                                             lambda chunk: network(chunk),
                                             self.crop_size, self.margin_size)
+                # apply the mask again
+                pred = torch.minimum(pred,mask)
 
                 loss = loss_function(pred, label)
                 loss_v = float(utils.from_torch(loss))
@@ -173,7 +179,7 @@ class Validation(object):
                 preds.append(pred_np)
                 label_np = utils.from_torch(label)[0]
                 
-                pred_mask = skeletonize_3d((pred_np <= 0)[0])//255
+                pred_mask = skeletonize((pred_np <= 0)[0])//255
                 label_mask = (label_np==0)
 
                 corr, comp, qual = correctness_completeness_quality(pred_mask, label_mask, slack=3)

@@ -62,90 +62,55 @@ class SynthDataset(Dataset):
 
 class DRIVEDataset(Dataset):
     
-    def __init__(self, base_dir, train=True, cropSize=(512, 512), th=15, transform=None):
-        """
-        Args:
-            base_dir (str): Path to DRIVE dataset root directory
-            train (bool): Whether to use training or test set
-            cropSize (tuple): Size for cropping images
-            th (float): Threshold value
-            transform (callable): Optional transform to apply to the images
-        """
-        subset = 'training' if train else 'test'
-        
-        """ image_dir = os.path.join(base_dir, subset, 'images')
-        mask_dir = os.path.join(base_dir, subset, 'mask')
-        gt_dir = os.path.join(base_dir, subset, '1st_manual') """
-        self.image_path = {
+    def __init__(self, train=True, cropSize=(512, 512), th=15):
+        image_path = {
             "train": ["/drive/training/images/{i}_training.npy".format(i) for i in range(21,36)],
             "val":  ["/drive/training/images/{i}_training.npy".format(i) for i in range(36,41)]
         }
-        self.label_path = {
+        label_path = {
             # Using noise_2_dist_labels instead of dist_labels
             "train": ["/drive/training/inverted_labels/{i}_manual1.npy".format(i) for i in range(21,36)],
             "val":  ["/drive/training/inverted_labels/{i}_manual1.npy".format(i) for i in range(36,41)]
         }
-        self.graph_path = {
+        graph_path = {
             "train": ["/drive/training/graphs/{i}_manual1.npy.graph".format(i) for i in range(21,36)],
             "val":  ["/drive/training/graphs/{i}_manual1.npy.graph".format(i) for i in range(36,41)]
         }
-        self.masks = {
+        # i guess the mask will be applied after unets prediction su that unnecessary info is blocked
+        masks_path = {
             "train": ["/drive/training/mask/{i}_training_mask.gif".format(i) for i in range(21,36)],
             "val":  ["/drive/training/mask/{i}_training_mask.gif".format(i) for i in range(36,41)]
         }
         
-        """ self.images = [os.path.join(image_dir, f) for f in sorted(os.listdir(image_dir)) if f.endswith('.tif')]
-        self.masks = [os.path.join(mask_dir, f) for f in sorted(os.listdir(mask_dir)) if f.endswith('.gif')]
-        self.gt = [os.path.join(gt_dir, f) for f in sorted(os.listdir(gt_dir)) if f.endswith('.gif')] """
+        self.images = image_path["train"] if train else image_path["val"]
+        self.labels = label_path["train"] if train else label_path["val"]
+        self.masks = image_path["train"] if train else image_path["val"]
+        self.graphs = graph_path["train"] if train else graph_path["val"]
         
         self.train = train
         self.cropSize = cropSize
         self.th = th
-        self.transform = transform
         
     def __getitem__(self, index):
-        # Load image (tif)
-        image = np.array(Image.open(self.images[index]), dtype=np.float32) / 255.0
+        image = np.load(self.images[index])
+        label = np.load(self.labels[index])
+        mask = np.load(self.masks[index])
+        graph = load_graph_txt(self.graphs[index])
         
-        # Load mask (gif)
-        mask = np.array(Image.open(self.masks[index]), dtype=np.float32) / 255.0
-        
-        # Load ground truth (gif)
-        label = np.array(Image.open(self.gt[index]), dtype=np.float32) / 255.0
-        
-        # Apply mask to focus only on the retinal area
-        image = image * mask[:,:,None] if image.ndim == 3 else image * mask
-        
-        # Convert RGB to grayscale if necessary
-        if image.ndim == 3:
-            image = np.mean(image, axis=2)
-        
-        # Create distance map from ground truth if needed
-        # You may need to compute a distance transform from the binary vessels
-        # For example: from scipy.ndimage import distance_transform_edt
-        # distance_map = distance_transform_edt(1 - label)
-        # label = distance_map
-        # label[label > self.th] = self.th
-        
+        """ for n in graph.nodes:
+            graph.nodes[n]["pos"] = graph.nodes[n]["pos"][-1::-1] """
+            
         slices = None
-        graph = None
         
-        if self.train and self.cropSize is not None:
-            # Implement 2D cropping
-            image, label, slices = crop([image, label], self.cropSize)
+        if self.train:
+            image, label, mask, slices = crop([image, label, mask], self.cropSize)
             
-        if self.transform:
-            image = self.transform(image)
-            label = self.transform(label)
-            
-        # Generate graph representation for snake algorithm if needed
-        if self.train and hasattr(self, 'generate_graph'):
-            graph = self.generate_graph(label, slices)
+        label[label>self.th] = self.th
         
-        if self.train and graph is not None:
-            return torch.tensor(image), torch.tensor(label), graph, slices
+        if self.train:
+            return torch.tensor(image), torch.tensor(label), torch.tensor(mask), graph, slices
         
-        return torch.tensor(image), torch.tensor(label)
+        return torch.tensor(image), torch.tensor(label), torch.tensor(mask)
 
     def __len__(self):
         return len(self.images)

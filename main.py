@@ -8,7 +8,7 @@ from Codes import utils
 from Codes.network import UNet
 from Codes.training import *
 from Codes.Losses.losses import MSELoss, SnakeFastLoss, SnakeSimpleLoss
-from Codes.dataset import SynthDataset, collate_fn
+from Codes.dataset import DRIVEDataset, collate_fn
 from Codes import utils
 from torch.utils.data import DataLoader
 
@@ -34,14 +34,14 @@ def main(config_file="main.config"):
     logger.info("Command line: {}".format(' '.join(sys.argv)))
 
     logger.info("Loading training dataset")
-    dataset_training = SynthDataset(train=True, cropSize=__c__["crop_size"], th=__c__["threshold"])
+    dataset_training = DRIVEDataset(train=True, cropSize=__c__["crop_size"], th=__c__["threshold"])
     dataloader_training= DataLoader(dataset_training, batch_size=batch_size, num_workers=4, \
                                     shuffle=True, collate_fn=collate_fn)
     
     logger.info("Done. {} datapoints loaded.".format(len(dataset_training)))
 
     logger.info("Loading validation dataset")
-    dataset_validation = SynthDataset(train=False, th=__c__["threshold"])
+    dataset_validation = DRIVEDataset(train=False, th=__c__["threshold"])
     dataloader_validation = DataLoader(dataset_validation, batch_size=1, num_workers=1, \
                                         shuffle=False)
     
