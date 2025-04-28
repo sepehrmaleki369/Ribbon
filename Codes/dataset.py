@@ -64,22 +64,22 @@ class DRIVEDataset(Dataset):
     
     def __init__(self, train=True, cropSize=(512, 512), th=15):
         image_path = {
-            "train": ["/drive/training/images/{i}_training.npy".format(i) for i in range(21,36)],
-            "val":  ["/drive/training/images/{i}_training.npy".format(i) for i in range(36,41)]
+            "train": ["/content/drive/MyDrive/windows2/drive/training/images/{}_training.npy".format(i) for i in range(21,36)],
+            "val":  ["/content/drive/MyDrive/windows2/drive/training/images/{}_training.npy".format(i) for i in range(36,41)]
         }
         label_path = {
             # Using noise_2_dist_labels instead of dist_labels
-            "train": ["/drive/training/inverted_labels/{i}_manual1.npy".format(i) for i in range(21,36)],
-            "val":  ["/drive/training/inverted_labels/{i}_manual1.npy".format(i) for i in range(36,41)]
+            "train": ["/content/drive/MyDrive/windows2/drive/training/inverted_labels/{}_manual1.npy".format(i) for i in range(21,36)],
+            "val":  ["/content/drive/MyDrive/windows2/drive/training/inverted_labels/{}_manual1.npy".format(i) for i in range(36,41)]
         }
         graph_path = {
-            "train": ["/drive/training/graphs/{i}_manual1.npy.graph".format(i) for i in range(21,36)],
-            "val":  ["/drive/training/graphs/{i}_manual1.npy.graph".format(i) for i in range(36,41)]
+            "train": ["/content/drive/MyDrive/windows2/drive/training/graphs/{}_manual1.npy.graph".format(i) for i in range(21,36)],
+            "val":  ["/content/drive/MyDrive/windows2/drive/training/graphs/{}_manual1.npy.graph".format(i) for i in range(36,41)]
         }
         # i guess the mask will be applied after unets prediction su that unnecessary info is blocked
         masks_path = {
-            "train": ["/drive/training/mask/{i}_training_mask.gif".format(i) for i in range(21,36)],
-            "val":  ["/drive/training/mask/{i}_training_mask.gif".format(i) for i in range(36,41)]
+            "train": ["/content/drive/MyDrive/windows2/drive/training/mask/{}_training_mask.gif".format(i) for i in range(21,36)],
+            "val":  ["/content/drive/MyDrive/windows2/drive/training/mask/{}_training_mask.gif".format(i) for i in range(36,41)]
         }
         
         self.images = image_path["train"] if train else image_path["val"]
