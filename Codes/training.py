@@ -169,7 +169,7 @@ class Validation(object):
                                             lambda chunk: network(chunk),
                                             self.crop_size, self.margin_size)
                 # apply the mask again
-                pred = torch.minimum(pred,mask)
+                pred = torch.maximum(pred,mask)
 
                 loss = loss_function(pred, label)
                 loss_v = float(utils.from_torch(loss))
