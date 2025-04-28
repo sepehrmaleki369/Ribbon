@@ -43,7 +43,7 @@ def main(config_file="main.config"):
     logger.info("Loading validation dataset")
     dataset_validation = DRIVEDataset(train=False, th=__c__["threshold"])
     dataloader_validation = DataLoader(dataset_validation, batch_size=1, num_workers=1, \
-                                        shuffle=False)
+                                        shuffle=False, collate_fn=collate_fn)
     
     logger.info("Done. {} datapoints loaded.".format(len(dataset_validation)))
     

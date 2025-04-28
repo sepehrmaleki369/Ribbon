@@ -157,11 +157,11 @@ class Validation(object):
 
         network.train(False)
         with utils.torch_no_grad:
-            for i, (image, label, mask) in enumerate(self.dataloader_val):
-        
-                image  = image.cuda()[:,None]
-                label  = label.cuda()[:,None]
-                mask   = mask.cuda()[:,None]
+            for i, data_batch in enumerate(self.dataloader_val):
+                image, label, mask = data_batch
+                image  = image.cuda()
+                label  = label.cuda()
+                mask   = mask.cuda()
 
                 out_shape = (image.shape[0],self.out_channels,*image.shape[2:])
                 pred = utils.to_torch(np.empty(out_shape, np.float32), volatile=True).cuda()
