@@ -138,7 +138,7 @@ def load_graph_txt(filename):
                 continue
             if switch:
                 x,y,z = line.split(' ')
-                G.add_node(i, pos=(float(x),float(y),float(z)))
+                G.add_node(i, pos=(float(x),float(y)))
                 i+=1
             else:
                 idx_node1, idx_node2 = line.split(' ')
