@@ -103,8 +103,9 @@ class TrainingEpoch(object):
             masks = masks.cuda()
             
             preds = network(images.contiguous())
-            # apply the mask, it is 1 
-            preds = torch.minimum(preds, masks)
+            # apply the mask
+            binary_mask = (masks == 0).float() 
+            preds = preds * binary_mask
             
             if self.ours and iterations >= self.ours_start:
             # calls forward on loss here, and snake is adjusted
@@ -169,7 +170,8 @@ class Validation(object):
                                             lambda chunk: network(chunk),
                                             self.crop_size, self.margin_size)
                 # apply the mask again
-                pred = torch.maximum(pred,mask)
+                binary_mask = (mask == 0).float() 
+                preds = preds * binary_mask
 
                 loss = loss_function(pred, label)
                 loss_v = float(utils.from_torch(loss))
