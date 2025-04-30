@@ -181,7 +181,7 @@ class Validation(object):
                 preds.append(pred_np)
                 label_np = utils.from_torch(label)[0]
                 
-                pred_mask = skeletonize((pred_np <= 0)[0])//255
+                pred_mask = skeletonize((pred_np <= 5)[0])//255
                 label_mask = (label_np==0)
 
                 corr, comp, qual = correctness_completeness_quality(pred_mask, label_mask, slack=3)
