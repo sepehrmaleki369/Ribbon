@@ -63,7 +63,7 @@ class SnakeFastLoss(nn.Module):
         self.iscuda = True
         return self
 
-    def forward(self, pred_dmap, lbl_graphs, crops=None, ind= None):
+    def forward(self, pred_dmap, lbl_graphs, crops=None, mask= None):
         # pred_dmap is the predicted distance map from the UNet
         # lbl_graphs contains graphs each represent a label as a snake
         # crops is a list of slices, each represents the crop area of the corresponding snake
@@ -100,6 +100,8 @@ class SnakeFastLoss(nn.Module):
 
             s.optim(self.nsteps)
             dmap = s.render_distance_map_with_widths(g[0].shape)
+            if mask:
+                dmap = dmap * (mask==0)
             if dmap.shape != output_size:
                 dmap = torch.nn.functional.interpolate(
                     dmap.unsqueeze(0).unsqueeze(0),

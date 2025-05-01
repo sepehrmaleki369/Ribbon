@@ -109,7 +109,7 @@ class TrainingEpoch(object):
             
             if self.ours and iterations >= self.ours_start:
             # calls forward on loss here, and snake is adjusted
-                loss = our_loss(preds, graphs, slices)
+                loss = our_loss(preds, graphs, slices, masks)
             else:
                 loss = base_loss(preds, labels)
                 
@@ -171,7 +171,7 @@ class Validation(object):
                                             self.crop_size, self.margin_size)
                 # apply the mask again
                 binary_mask = (mask == 0).float() 
-                preds = preds * binary_mask
+                pred = pred * binary_mask
 
                 loss = loss_function(pred, label)
                 loss_v = float(utils.from_torch(loss))

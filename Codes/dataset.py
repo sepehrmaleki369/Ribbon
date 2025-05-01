@@ -44,8 +44,8 @@ class DRIVEDataset(Dataset):
         mask = np.load(self.masks[index])
         graph = load_graph_txt(self.graphs[index])
         
-        """ for n in graph.nodes:
-            graph.nodes[n]["pos"] = graph.nodes[n]["pos"][-1::-1] """
+        for n in graph.nodes:
+            graph.nodes[n]["pos"] = graph.nodes[n]["pos"][-1::-1]
             
         slices = None
         image = image.astype(np.float32)
