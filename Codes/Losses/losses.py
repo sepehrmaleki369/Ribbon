@@ -63,7 +63,7 @@ class SnakeFastLoss(nn.Module):
         self.iscuda = True
         return self
 
-    def forward(self, pred_dmap, lbl_graphs, crops=None, mask= None):
+    def forward(self, pred_dmap, lbl_graphs, crops=None, mask= None, original_shapes=None):
         # pred_dmap is the predicted distance map from the UNet
         # lbl_graphs contains graphs each represent a label as a snake
         # crops is a list of slices, each represents the crop area of the corresponding snake
@@ -80,37 +80,36 @@ class SnakeFastLoss(nn.Module):
         output_size = pred_dmap.shape[2:]
         device = pred_dmap.device
 
-        for i, lg in enumerate(zip(lbl_graphs, gimg, gimgW)):
-            # i is index num
-            # lg is a tuple of a graph and a gradient image
-            l = lg[0]  # graph
-            g = lg[1]  # gradient image
-            gw = lg[2]
-
+        for i, (full_graph, grad_img, grad_width_img) in enumerate(zip(lbl_graphs, gimg, gimgW)):
             if crops:
-                crop = crops[i]
+                crop_slices = crops[i]
+                original_shape = original_shapes[i] # Get the full image shape for this item
             else:
-                crop = [slice(0, s) for s in g.shape[1:]]
+                # If no crops, assume pred_dmap is the full image
+                crop_slices = [slice(0, s) for s in grad_img.shape[1:]]
+                original_shape = pred_dmap.shape[2:]
 
-            s = GradImRib(graph=l, crop=crop, stepsz=self.stepsz, alpha=self.alpha,
-                        beta=self.beta,dim=self.ndims, gimgV=g, gimgW=gw)
+            s = GradImRib(graph=full_graph, crop=crop_slices, stepsz=self.stepsz, alpha=self.alpha,
+                        beta=self.beta, dim=self.ndims, gimgV=grad_img, gimgW=grad_width_img)
                     
             if self.iscuda: 
                 s.cuda()
 
             s.optim(self.nsteps)
-            dmap = s.render_distance_map_with_widths(g[0].shape)
-            if mask:
-                dmap = dmap * (mask==0)
-            if dmap.shape != output_size:
-                dmap = torch.nn.functional.interpolate(
-                    dmap.unsqueeze(0).unsqueeze(0),
+            full_dmap = s.render_distance_map_with_widths(original_shape)
+            cropped_rendered_dmap = full_dmap[crop_slices]
+            if mask is not None:
+                current_mask = mask[i] if mask.shape[0] > 1 else mask
+                cropped_rendered_dmap = cropped_rendered_dmap * (current_mask == 0).squeeze(0)
+            if cropped_rendered_dmap.shape != output_size:
+                cropped_rendered_dmap = torch.nn.functional.interpolate(
+                    cropped_rendered_dmap.unsqueeze(0).unsqueeze(0),
                     size=output_size,
-                    mode='nearest'
+                    mode='nearest' # or appropriate mode
                 ).squeeze(0).squeeze(0)
                 
-            dmap = dmap.to(device)
-            snake_dmap.append(dmap)
+            cropped_rendered_dmap = cropped_rendered_dmap.to(device)
+            snake_dmap.append(cropped_rendered_dmap)
 
         snake_dm = torch.stack(snake_dmap, 0).unsqueeze(1)   
         snake_dm = snake_dm.to(device)     

@@ -96,7 +96,7 @@ class TrainingEpoch(object):
     def __call__(self, iterations, network, optimizer, lr_scheduler, base_loss, our_loss):
         
         mean_loss = 0
-        for images, labels, masks, graphs, slices in self.dataloader:
+        for images, labels, masks, graphs, slices, original_shapes in self.dataloader:
 
             images = images.cuda()
             labels = labels.cuda()
@@ -109,7 +109,7 @@ class TrainingEpoch(object):
             
             if self.ours and iterations >= self.ours_start:
             # calls forward on loss here, and snake is adjusted
-                loss = our_loss(preds, graphs, slices, masks)
+                loss = our_loss(preds, graphs, slices, masks, original_shapes)
             else:
                 loss = base_loss(preds, labels)
                 

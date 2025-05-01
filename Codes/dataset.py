@@ -4,6 +4,7 @@ import torchvision.transforms as transforms
 import numpy as np
 from .augmentations import crop
 from .utils import load_graph_txt, to_torch
+from Losses.cropGraph import cropGraph_dontCutEdges
 from PIL import Image
 import os
 
@@ -51,16 +52,25 @@ class DRIVEDataset(Dataset):
         image = image.astype(np.float32)
         label = label.astype(np.float32)
         mask = mask.astype(np.float32)
-        
+        original_image_shape = image.shape[:self.cropSize.dims]
         if self.train:
             image, label, mask, slices = crop([image, label, mask], self.cropSize)
+            """ cropped_graph_view = cropGraph_dontCutEdges(graph, slices)
+            cropped_graph = cropped_graph_view.copy()
+
+            offset = np.array([s.start for s in slices])
+            for n in cropped_graph.nodes:
+                if 'pos' in cropped_graph.nodes[n]:
+                    cropped_graph.nodes[n]['pos'] = cropped_graph.nodes[n]['pos'] - offset
+            
+            graph = cropped_graph """
             
         label[label>self.th] = self.th
         
         if self.train:
-            return torch.tensor(image, dtype=torch.float32), torch.tensor(label, dtype=torch.float32), torch.tensor(mask, dtype=torch.float32), graph, slices
+            return torch.tensor(image, dtype=torch.float32), torch.tensor(label, dtype=torch.float32), torch.tensor(mask, dtype=torch.float32), graph, slices, original_image_shape
         
-        return torch.tensor(image, dtype=torch.float32), torch.tensor(label, dtype=torch.float32), torch.tensor(mask, dtype=torch.float32)
+        return torch.tensor(image, dtype=torch.float32), torch.tensor(label, dtype=torch.float32), torch.tensor(mask, dtype=torch.float32), original_image_shape
 
     def __len__(self):
         return len(self.images)
@@ -74,12 +84,14 @@ def collate_fn(data):
 
     graphs = None
     slices = None
-    if len(transposed_data) > 3:
-        graphs = transposed_data[3]
-    if len(transposed_data) > 4:
-        slices = transposed_data[4]
+    original_shapes = None
+    is_train = len(transposed_data) > 3
 
-    if graphs is not None and slices is not None:
-        return images, labels, masks, graphs, slices
+    if is_train:
+        graphs = transposed_data[3]
+        slices = transposed_data[4]
+        original_shapes = transposed_data[5]
+        return images, labels, masks, graphs, slices, original_shapes
     else:
-        return images, labels, masks
+        original_shapes = transposed_data[3]
+        return images, labels, masks, original_shapes
