@@ -4,6 +4,7 @@ from torch import nn
 import numpy as np
 from scipy.ndimage.morphology import distance_transform_edt as dist
 from .gradRib import GradImRib, makeGaussEdgeFltr, cmptGradIm
+from . import gradImSnake
 
 class MSELoss(nn.Module):
 
@@ -63,7 +64,7 @@ class SnakeFastLoss(nn.Module):
         self.iscuda = True
         return self
 
-    def forward(self, pred_dmap, lbl_graphs, crops=None, mask= None, original_shapes=None):
+    def forward(self, pred_dmap, lbl_graphs, crops=None, masks=None, original_shapes=None):
         # pred_dmap is the predicted distance map from the UNet
         # lbl_graphs contains graphs each represent a label as a snake
         # crops is a list of slices, each represents the crop area of the corresponding snake
@@ -98,8 +99,8 @@ class SnakeFastLoss(nn.Module):
             s.optim(self.nsteps)
             full_dmap = s.render_distance_map_with_widths(original_shape)
             cropped_rendered_dmap = full_dmap[crop_slices]
-            if mask is not None:
-                current_mask = mask[i] if mask.shape[0] > 1 else mask
+            if masks is not None:
+                current_mask = masks[i] if masks.shape[0] > 1 else masks
                 cropped_rendered_dmap = cropped_rendered_dmap * (current_mask == 0).squeeze(0)
             if cropped_rendered_dmap.shape != output_size:
                 cropped_rendered_dmap = torch.nn.functional.interpolate(
