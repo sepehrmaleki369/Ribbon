@@ -8,7 +8,7 @@ def drawLine(lbl,begPoint,endPoint):
     d=endPoint-begPoint
     mi=np.argmax(np.fabs(d))
     if d[mi]==0: # beginning and end points the same
-        lbl[tuple(begPoint.astype(np.int))]=1
+        lbl[tuple(begPoint.astype(int))]=1
     else:
         coef=d/d[mi] # a vector that points from the current to the next pixel
         sz=np.array(lbl.shape) # an array holding a shape not an array of shape
@@ -17,7 +17,7 @@ def drawLine(lbl,begPoint,endPoint):
         for t in range(0,numsteps):
             pos=begPoint+coef*t*step
             if np.all(pos<sz) and np.all(pos>=0):
-                lbl[tuple(np.round(pos).astype(np.int))]=1
+                lbl[tuple(np.round(pos).astype(int))]=1
             else:
                 print("warning: reqested point",pos,"but the volume size is",sz)
     return lbl

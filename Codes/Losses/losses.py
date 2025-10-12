@@ -92,7 +92,7 @@ class SnakeFastLoss(nn.Module):
 
             s = GradImRib(graph=full_graph, crop=crop_slices, stepsz=self.stepsz, alpha=self.alpha,
                         beta=self.beta, dim=self.ndims, gimgV=grad_img, gimgW=grad_width_img)
-                    
+
             if self.iscuda: 
                 s.cuda()
 
@@ -112,7 +112,7 @@ class SnakeFastLoss(nn.Module):
             cropped_rendered_dmap = cropped_rendered_dmap.to(device)
             snake_dmap.append(cropped_rendered_dmap)
 
-        snake_dm = torch.stack(snake_dmap, 0).unsqueeze(1)   
+        snake_dm = torch.stack(snake_dmap, 0).unsqueeze(1) 
         snake_dm = snake_dm.to(device)     
         loss = ((pred_dmap - snake_dm)**2).mean()
         self.snake = s
@@ -146,14 +146,14 @@ class SnakeSimpleLoss(nn.Module):
         self.iscuda=True
         return self
 
-    def forward(self,pred_dmap,lbl_graphs,crops=None):
-    
-        pred_=pred_dmap.detach()
-        gimg=gradImSnake.cmptGradIm(pred_,self.fltrt)
-        gimg*=self.extgradfac
-        snake_dmap=[]
+    def forward(self, pred_dmap, lbl_graphs, crops=None, masks=None, original_shapes=None):
 
-        for i,lg in enumerate(zip(lbl_graphs,gimg)):
+        pred_ = pred_dmap.detach()
+        gimg = gradImSnake.cmptGradIm(pred_, self.fltrt)
+        gimg *= self.extgradfac
+        snake_dmap = []
+
+        for i, lg in enumerate(zip(lbl_graphs, gimg)):
             l = lg[0]
             g = lg[1]
             if crops:
@@ -182,7 +182,9 @@ class SnakeSimpleLoss(nn.Module):
                   
         self.snake=s
         self.gimg=gimg
+        self.snake_dm=snake_dm  # Store for visualization
         
         return loss
+    
     
     

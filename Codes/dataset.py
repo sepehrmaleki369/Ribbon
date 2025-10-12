@@ -21,9 +21,9 @@ class DriveDataset(Dataset):
         }
         
         label_path = {
-            # Distance maps (contain width information)
-            "train": ["/content/Ribbon/Codes/drive/training/distance_maps/{}_training_distance_map.npy".format(i) for i in train_ids],
-            "val":  ["/content/Ribbon/Codes/drive/training/distance_maps/{}_training_distance_map.npy".format(i) for i in val_ids]
+            # Signed distance maps (negative inside vessels, positive outside)
+            "train": ["/content/Ribbon/Codes/drive/training/signed_distance_maps/{}_training_signed_dmap.npy".format(i) for i in train_ids],
+            "val":  ["/content/Ribbon/Codes/drive/training/signed_distance_maps/{}_training_signed_dmap.npy".format(i) for i in val_ids]
         }
         
         graph_path = {
@@ -32,16 +32,9 @@ class DriveDataset(Dataset):
             "val":  ["/content/Ribbon/Codes/drive/training/graphs_oversampled/{}_oversampled_spacing5.npy".format(i) for i in val_ids]
         }
         
-        mask_path = {
-            # Field-of-view masks (circular mask for retinal images)
-            "train": ["/content/Ribbon/Codes/drive/training/mask_npy/{}_training_mask.npy".format(i) for i in train_ids],
-            "val":  ["/content/Ribbon/Codes/drive/training/mask_npy/{}_training_mask.npy".format(i) for i in val_ids]
-        }
-        
         self.images = image_path["train"] if train else image_path["val"]
         self.labels = label_path["train"] if train else label_path["val"]
         self.graphs = graph_path["train"] if train else graph_path["val"]
-        self.masks = mask_path["train"] if train else mask_path["val"]
             
         self.train = train
         self.cropSize = cropSize
@@ -80,7 +73,6 @@ class DriveDataset(Dataset):
             image = 0.299 * image[:, :, 0] + 0.587 * image[:, :, 1] + 0.114 * image[:, :, 2]
         
         label = np.load(self.labels[index])
-        mask = np.load(self.masks[index])
         
         # Load graph - check if it's .npy or .graph format
         if self.graphs[index].endswith('.npy'):
@@ -94,21 +86,20 @@ class DriveDataset(Dataset):
         # Convert to float32
         image = image.astype(np.float32)
         label = label.astype(np.float32)
-        mask = mask.astype(np.float32)
         
         original_image_shape = image.shape
         slices = None
         
         # Only crop if image is larger than crop size
         if self.train and image.shape[0] > self.cropSize[0] and image.shape[1] > self.cropSize[1]:
-            image, label, mask, slices = crop([image, label, mask], self.cropSize)
+            image, label, slices = crop([image, label], self.cropSize)
             
         label[label>self.th] = self.th
         
         if self.train:
-            return torch.tensor(image, dtype=torch.float32), torch.tensor(label, dtype=torch.float32), torch.tensor(mask, dtype=torch.float32), graph, slices, original_image_shape
+            return torch.tensor(image, dtype=torch.float32), torch.tensor(label, dtype=torch.float32), graph, slices, original_image_shape
         
-        return torch.tensor(image, dtype=torch.float32), torch.tensor(label, dtype=torch.float32), torch.tensor(mask, dtype=torch.float32), original_image_shape
+        return torch.tensor(image, dtype=torch.float32), torch.tensor(label, dtype=torch.float32), original_image_shape
 
     def __len__(self):
         return len(self.images)
@@ -118,18 +109,17 @@ def collate_fn(data):
     transposed_data = list(zip(*data))
     images = torch.stack(transposed_data[0], 0)[:,None]  # Add channel dimension for grayscale
     labels = torch.stack(transposed_data[1], 0)[:,None]
-    masks = torch.stack(transposed_data[2], 0)[:,None]
 
     graphs = None
     slices = None
     original_shapes = None
-    is_train = len(transposed_data) > 4
+    is_train = len(transposed_data) > 3
 
     if is_train:
-        graphs = transposed_data[3]
-        slices = transposed_data[4]
-        original_shapes = transposed_data[5]
-        return images, labels, masks, graphs, slices, original_shapes
+        graphs = transposed_data[2]
+        slices = transposed_data[3]
+        original_shapes = transposed_data[4]
+        return images, labels, graphs, slices, original_shapes
     else:
-        original_shapes = transposed_data[3]
-        return images, labels, masks, original_shapes
+        original_shapes = transposed_data[2]
+        return images, labels, original_shapes
