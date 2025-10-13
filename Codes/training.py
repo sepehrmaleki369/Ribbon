@@ -162,11 +162,11 @@ class TrainingEpoch(object):
             label_np = utils.from_torch(labels[0].cpu())[0]
             pred_np = utils.from_torch(preds[0].cpu())[0]
             
-            # Create figure
-            num_plots = 4 if snake_adjusted_dmap is not None else 3
-            fig, axes = plt.subplots(1, num_plots, figsize=(5*num_plots, 5))
+            # Create figure with 3 plots only
+            fig, axes = plt.subplots(1, 3, figsize=(15, 5))
             
-            loss_type = "SnakeSimple" if (self.ours and iterations >= self.ours_start) else "MSE"
+            using_snake = (self.ours and iterations >= self.ours_start)
+            loss_type = "SnakeSimple (Width-Aware)" if using_snake else "MSE"
             fig.suptitle(f"Training Epoch {iterations} | Loss: {loss_type} = {mean_loss/len(self.dataloader):.3f}")
             
             # 1. Input Image
@@ -176,24 +176,16 @@ class TrainingEpoch(object):
             axes[0].axis('off')
             
             # 2. Ground Truth Distance Map
-            im1 = axes[1].imshow(label_np, cmap='viridis', origin='lower')
-            axes[1].set_title(f'GT Distance Map\n(min:{label_np.min():.1f}, max:{label_np.max():.1f})')
+            im1 = axes[1].imshow(label_np, cmap='RdBu_r', origin='lower', vmin=-15, vmax=15)
+            axes[1].set_title(f'GT Signed DMap\n(min:{label_np.min():.1f}, max:{label_np.max():.1f})')
             axes[1].axis('off')
-            plt.colorbar(im1, ax=axes[1], fraction=0.046)
+            plt.colorbar(im1, ax=axes[1], fraction=0.046, label='Distance (neg=vessel)')
             
             # 3. Prediction Distance Map
-            im2 = axes[2].imshow(pred_np, cmap='viridis', origin='lower')
+            im2 = axes[2].imshow(pred_np, cmap='RdBu_r', origin='lower', vmin=-15, vmax=15)
             axes[2].set_title(f'Prediction\n(min:{pred_np.min():.1f}, max:{pred_np.max():.1f})')
             axes[2].axis('off')
-            plt.colorbar(im2, ax=axes[2], fraction=0.046)
-            
-            # 4. Snake-Adjusted Distance Map (if using snake loss)
-            if snake_adjusted_dmap is not None:
-                snake_np = utils.from_torch(snake_adjusted_dmap[0].cpu())[0]
-                im3 = axes[3].imshow(snake_np, cmap='viridis', origin='lower')
-                axes[3].set_title(f'Snake-Adjusted Target\n(min:{snake_np.min():.1f}, max:{snake_np.max():.1f})')
-                axes[3].axis('off')
-                plt.colorbar(im3, ax=axes[3], fraction=0.046)
+            plt.colorbar(im2, ax=axes[2], fraction=0.046, label='Distance (neg=vessel)')
             
             plt.tight_layout()
             plot_filename = os.path.join(plot_dir, f"training_epoch_{iterations:06d}.png")
