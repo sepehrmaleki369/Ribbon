@@ -157,6 +157,7 @@ class SnakeSimpleLoss(nn.Module):
         gimgW = cmptGradIm(dmapW, self.fltrt)
         gimgW *= self.extgradfac
         snake_dmap = []
+        snake_dmap_initial = []  # Store initial state before optimization
 
         for i, (l, g, gw) in enumerate(zip(lbl_graphs, gimg, gimgW)):
             if crops:
@@ -167,22 +168,30 @@ class SnakeSimpleLoss(nn.Module):
             s = GradImRib(l, crop, self.stepsz, self.alpha, self.beta, self.ndims, g, gw)
             if self.iscuda: s.cuda()
 
+            # Render initial distance map (before optimization)
+            dmap_initial = s.render_distance_map_with_widths(g.shape[1:], max_dist=self.dmax)
+            dmap_initial = dmap_initial.cpu().numpy() if self.iscuda else dmap_initial.numpy()
+            snake_dmap_initial.append(torch.Tensor(dmap_initial).type(torch.float32).cuda())
+
+            # Optimize snake (adjust position and width)
             s.optim(self.nsteps)
 
-            # Render distance map with width information
-            dmap = s.render_distance_map_with_widths(g.shape[1:], max_dist=self.dmax)
-            dmap = dmap.cpu().numpy() if self.iscuda else dmap.numpy()
+            # Render final distance map (after optimization)
+            dmap_final = s.render_distance_map_with_widths(g.shape[1:], max_dist=self.dmax)
+            dmap_final = dmap_final.cpu().numpy() if self.iscuda else dmap_final.numpy()
             
-            snake_dmap.append(torch.Tensor(dmap).type(torch.float32).cuda())
+            snake_dmap.append(torch.Tensor(dmap_final).type(torch.float32).cuda())
 
-        snake_dm=torch.stack(snake_dmap,0).unsqueeze(1)
+        snake_dm_initial = torch.stack(snake_dmap_initial,0).unsqueeze(1)
+        snake_dm = torch.stack(snake_dmap,0).unsqueeze(1)
         
-        # Simple MSE loss
+        # Simple MSE loss (using final optimized snake)
         loss = torch.pow(pred_dmap - snake_dm, 2).mean()
                   
         self.snake=s
         self.gimg=gimg
-        self.snake_dm=snake_dm  # Store for visualization
+        self.snake_dm_initial = snake_dm_initial  # Store initial for visualization
+        self.snake_dm = snake_dm  # Store final for visualization
         
         return loss
     

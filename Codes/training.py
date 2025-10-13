@@ -115,7 +115,11 @@ class TrainingEpoch(object):
                 logger.info(f"Epoch {iterations}: Using MSELoss (baseline)")
         
         mean_loss = 0
-        snake_adjusted_dmap = None  # Store for visualization
+        snake_adjusted_dmap_initial = None  # Store initial snake for visualization
+        snake_adjusted_dmap = None  # Store final snake for visualization
+        vis_images = None
+        vis_labels = None
+        vis_preds = None
         
         for batch_idx, (images, labels, graphs, slices, original_shapes) in enumerate(self.dataloader):
 
@@ -127,11 +131,19 @@ class TrainingEpoch(object):
             if self.ours and iterations >= self.ours_start:
             # calls forward on loss here, and snake is adjusted
                 loss = our_loss(preds, graphs, slices, None, original_shapes)
-                # Store snake-adjusted distance map for visualization
+                # Store snake distance maps AND corresponding images for visualization (from first batch)
                 if batch_idx == 0:
+                    snake_adjusted_dmap_initial = getattr(our_loss, 'snake_dm_initial', None)
                     snake_adjusted_dmap = getattr(our_loss, 'snake_dm', None)
+                    vis_images = images
+                    vis_labels = labels
+                    vis_preds = preds
             else:
                 loss = base_loss(preds, labels)
+                if batch_idx == 0:
+                    vis_images = images
+                    vis_labels = labels
+                    vis_preds = preds
                 
             loss_v = float(utils.from_torch(loss))
 
@@ -153,19 +165,22 @@ class TrainingEpoch(object):
                 torch.cuda.empty_cache()
         
         # Create comprehensive training plots every 10 epochs
-        if iterations % 10 == 0 and len(images) > 0:
+        if iterations % 10 == 0 and vis_images is not None:
             plot_dir = "./training_plots"
             utils.mkdir(plot_dir)
             
-            # Get first sample from last batch
-            img_np = utils.from_torch(images[0].cpu())[0]
-            label_np = utils.from_torch(labels[0].cpu())[0]
-            pred_np = utils.from_torch(preds[0].cpu())[0]
+            # Get first sample from first batch (matching snake_dm)
+            img_np = utils.from_torch(vis_images[0].cpu())[0]
+            label_np = utils.from_torch(vis_labels[0].cpu())[0]
+            pred_np = utils.from_torch(vis_preds[0].cpu())[0]
             
-            # Create figure with 3 plots only
-            fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-            
+            # Check if snake-adjusted distance maps are available
             using_snake = (self.ours and iterations >= self.ours_start)
+            has_snake_dm = using_snake and snake_adjusted_dmap is not None and snake_adjusted_dmap_initial is not None
+            num_plots = 5 if has_snake_dm else 3
+            
+            fig, axes = plt.subplots(1, num_plots, figsize=(4*num_plots, 5))
+            
             loss_type = "SnakeSimple (Width-Aware)" if using_snake else "MSE"
             fig.suptitle(f"Training Epoch {iterations} | Loss: {loss_type} = {mean_loss/len(self.dataloader):.3f}")
             
@@ -179,13 +194,27 @@ class TrainingEpoch(object):
             im1 = axes[1].imshow(label_np, cmap='RdBu_r', origin='lower', vmin=-15, vmax=15)
             axes[1].set_title(f'GT Signed DMap\n(min:{label_np.min():.1f}, max:{label_np.max():.1f})')
             axes[1].axis('off')
-            plt.colorbar(im1, ax=axes[1], fraction=0.046, label='Distance (neg=vessel)')
+            plt.colorbar(im1, ax=axes[1], fraction=0.046, label='Dist')
             
             # 3. Prediction Distance Map
             im2 = axes[2].imshow(pred_np, cmap='RdBu_r', origin='lower', vmin=-15, vmax=15)
             axes[2].set_title(f'Prediction\n(min:{pred_np.min():.1f}, max:{pred_np.max():.1f})')
             axes[2].axis('off')
-            plt.colorbar(im2, ax=axes[2], fraction=0.046, label='Distance (neg=vessel)')
+            plt.colorbar(im2, ax=axes[2], fraction=0.046, label='Dist')
+            
+            # 4 & 5. Snake Distance Maps (Before and After Optimization)
+            if has_snake_dm:
+                snake_initial_np = utils.from_torch(snake_adjusted_dmap_initial[0].cpu())[0]
+                im3 = axes[3].imshow(snake_initial_np, cmap='RdBu_r', origin='lower', vmin=-15, vmax=15)
+                axes[3].set_title(f'Snake BEFORE\n(min:{snake_initial_np.min():.1f}, max:{snake_initial_np.max():.1f})')
+                axes[3].axis('off')
+                plt.colorbar(im3, ax=axes[3], fraction=0.046, label='Dist')
+                
+                snake_final_np = utils.from_torch(snake_adjusted_dmap[0].cpu())[0]
+                im4 = axes[4].imshow(snake_final_np, cmap='RdBu_r', origin='lower', vmin=-15, vmax=15)
+                axes[4].set_title(f'Snake AFTER\n(min:{snake_final_np.min():.1f}, max:{snake_final_np.max():.1f})')
+                axes[4].axis('off')
+                plt.colorbar(im4, ax=axes[4], fraction=0.046, label='Dist')
             
             plt.tight_layout()
             plot_filename = os.path.join(plot_dir, f"training_epoch_{iterations:06d}.png")
