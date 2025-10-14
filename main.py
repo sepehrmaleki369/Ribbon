@@ -15,7 +15,7 @@ from torch.utils.data import DataLoader
 logger = logging.getLogger(__name__)
 
 
-def main(config_file="main.config"):
+def main(config_file="main.config", resume_from=None, start_epoch=0):
 
     torch.set_num_threads(1)
 
@@ -72,6 +72,13 @@ def main(config_file="main.config"):
     network.train(True)
     optimizer = torch.optim.Adam(network.parameters(), lr=__c__["lr"],
                                  weight_decay=__c__["weight_decay"])
+    
+    # Load checkpoint if specified
+    if resume_from:
+        logger.info(f"Loading checkpoint from: {resume_from}")
+        checkpoint = torch.load(resume_from)
+        network.load_state_dict(checkpoint)
+        logger.info(f"✓ Loaded checkpoint successfully")
 
     if __c__["lr_decay"]:
         lr_lambda = lambda it: 1/(1+it*__c__["lr_decay_factor"])
@@ -109,7 +116,10 @@ def main(config_file="main.config"):
                          save_every=__c__["save_every"],
                          save_path=output_path,
                          save_objects={"network":network},
-                         save_callback=None)
+                         save_callback=None,
+                         ours=__c__["ours"],
+                         ours_start=__c__["ours_start"],
+                         starting_iteration=start_epoch)
 
     trainer.run_for(__c__["num_iters"])
 
@@ -125,6 +135,10 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--config_file", "-c", type=str, default="main.config")
+    parser.add_argument("--resume_from", "-r", type=str, default=None, 
+                        help="Path to checkpoint to resume training from")
+    parser.add_argument("--start_epoch", "-s", type=int, default=0,
+                        help="Starting epoch number when resuming (e.g., 400)")
 
     args = parser.parse_args()
 

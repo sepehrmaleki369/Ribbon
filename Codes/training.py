@@ -16,10 +16,12 @@ class Trainer(object):
 
     def __init__(self,training_step, validation=None, valid_every=None,
                  print_every=None, save_every=None, save_path=None, save_objects={},
-                 save_callback=None):
+                 save_callback=None, ours=False, ours_start=0, starting_iteration=0):
 
         self.training_step = training_step
         self.validation = validation
+        self.ours = ours
+        self.ours_start = ours_start
         self.valid_every = valid_every
         self.print_every = print_every
         self.save_every = save_every
@@ -27,7 +29,7 @@ class Trainer(object):
         self.save_objects = save_objects
         self.save_callback = save_callback
 
-        self.starting_iteration = 0
+        self.starting_iteration = starting_iteration
 
         if self.save_path is None or self.save_path in ["", ".", "./"]:
             self.save_path = os.getcwd()
@@ -36,6 +38,8 @@ class Trainer(object):
                         "validation": {"epochs":[], "results":[]}}
 
     def save_state(self, iteration):
+        # Determine loss type based on iteration
+        loss_type = "mse" if (not self.ours or iteration < self.ours_start) else "snake"
 
         # Save to local experiments folder
         for name, object in self.save_objects.items():
@@ -45,11 +49,11 @@ class Trainer(object):
         utils.pickle_write(os.path.join(self.save_path, "results_final.pickle"),
                            self.results)
         
-        # Also save to Google Drive with iteration number
+        # Also save to Google Drive with iteration number and loss type
         drive_checkpoint_path = "/content/drive/MyDrive/ribbs/october/RibbonSertac"
         utils.mkdir(drive_checkpoint_path)
         for name, object in self.save_objects.items():
-            checkpoint_file = os.path.join(drive_checkpoint_path, f"checkpoint_epoch_{iteration}.pth")
+            checkpoint_file = os.path.join(drive_checkpoint_path, f"checkpoint_epoch_{iteration}_{loss_type}.pth")
             utils.torch_save(checkpoint_file, object.state_dict())
             logger.info(f"Saved checkpoint to {checkpoint_file}")
 
@@ -179,42 +183,85 @@ class TrainingEpoch(object):
             has_snake_dm = using_snake and snake_adjusted_dmap is not None and snake_adjusted_dmap_initial is not None
             num_plots = 5 if has_snake_dm else 3
             
-            fig, axes = plt.subplots(1, num_plots, figsize=(4*num_plots, 5))
+            # Create 2-row plot: Row 1 = Distance Maps, Row 2 = Binary Vessels
+            fig, axes = plt.subplots(2, num_plots, figsize=(4*num_plots, 10))
             
             loss_type = "SnakeSimple (Width-Aware)" if using_snake else "MSE"
-            fig.suptitle(f"Training Epoch {iterations} | Loss: {loss_type} = {mean_loss/len(self.dataloader):.3f}")
+            fig.suptitle(f"Training Epoch {iterations} | Loss: {loss_type} = {mean_loss/len(self.dataloader):.3f}", fontsize=14)
             
-            # 1. Input Image
+            # Extract 2D slices if needed
             img_norm = (img_np - img_np.min()) / (img_np.max() - img_np.min() + 1e-8)
-            axes[0].imshow(img_norm, cmap='gray', origin='lower')
-            axes[0].set_title('Input Image')
-            axes[0].axis('off')
+            label_2d = label_np[0] if len(label_np.shape) == 3 else label_np
+            pred_2d = pred_np[0] if len(pred_np.shape) == 3 else pred_np
+            
+            # === ROW 1: DISTANCE MAPS ===
+            # 1. Input Image
+            axes[0,0].imshow(img_norm, cmap='gray', origin='lower')
+            axes[0,0].set_title('Input Image')
+            axes[0,0].axis('off')
             
             # 2. Ground Truth Distance Map
-            im1 = axes[1].imshow(label_np, cmap='RdBu_r', origin='lower', vmin=-15, vmax=15)
-            axes[1].set_title(f'GT Signed DMap\n(min:{label_np.min():.1f}, max:{label_np.max():.1f})')
-            axes[1].axis('off')
-            plt.colorbar(im1, ax=axes[1], fraction=0.046, label='Dist')
+            im1 = axes[0,1].imshow(label_2d, cmap='RdBu_r', origin='lower', vmin=-15, vmax=15)
+            axes[0,1].set_title(f'GT Signed DMap\n(min:{label_np.min():.1f}, max:{label_np.max():.1f})')
+            axes[0,1].axis('off')
+            plt.colorbar(im1, ax=axes[0,1], fraction=0.046)
             
             # 3. Prediction Distance Map
-            im2 = axes[2].imshow(pred_np, cmap='RdBu_r', origin='lower', vmin=-15, vmax=15)
-            axes[2].set_title(f'Prediction\n(min:{pred_np.min():.1f}, max:{pred_np.max():.1f})')
-            axes[2].axis('off')
-            plt.colorbar(im2, ax=axes[2], fraction=0.046, label='Dist')
+            im2 = axes[0,2].imshow(pred_2d, cmap='RdBu_r', origin='lower', vmin=-15, vmax=15)
+            axes[0,2].set_title(f'Prediction\n(min:{pred_np.min():.1f}, max:{pred_np.max():.1f})')
+            axes[0,2].axis('off')
+            plt.colorbar(im2, ax=axes[0,2], fraction=0.046)
             
             # 4 & 5. Snake Distance Maps (Before and After Optimization)
             if has_snake_dm:
                 snake_initial_np = utils.from_torch(snake_adjusted_dmap_initial[0].cpu())[0]
-                im3 = axes[3].imshow(snake_initial_np, cmap='RdBu_r', origin='lower', vmin=-15, vmax=15)
-                axes[3].set_title(f'Snake BEFORE\n(min:{snake_initial_np.min():.1f}, max:{snake_initial_np.max():.1f})')
-                axes[3].axis('off')
-                plt.colorbar(im3, ax=axes[3], fraction=0.046, label='Dist')
+                snake_initial_2d = snake_initial_np[0] if len(snake_initial_np.shape) == 3 else snake_initial_np
+                
+                im3 = axes[0,3].imshow(snake_initial_2d, cmap='RdBu_r', origin='lower', vmin=-15, vmax=15)
+                axes[0,3].set_title(f'Snake BEFORE\n(min:{snake_initial_np.min():.1f}, max:{snake_initial_np.max():.1f})')
+                axes[0,3].axis('off')
+                plt.colorbar(im3, ax=axes[0,3], fraction=0.046)
                 
                 snake_final_np = utils.from_torch(snake_adjusted_dmap[0].cpu())[0]
-                im4 = axes[4].imshow(snake_final_np, cmap='RdBu_r', origin='lower', vmin=-15, vmax=15)
-                axes[4].set_title(f'Snake AFTER\n(min:{snake_final_np.min():.1f}, max:{snake_final_np.max():.1f})')
-                axes[4].axis('off')
-                plt.colorbar(im4, ax=axes[4], fraction=0.046, label='Dist')
+                snake_final_2d = snake_final_np[0] if len(snake_final_np.shape) == 3 else snake_final_np
+                
+                im4 = axes[0,4].imshow(snake_final_2d, cmap='RdBu_r', origin='lower', vmin=-15, vmax=15)
+                axes[0,4].set_title(f'Snake AFTER\n(min:{snake_final_np.min():.1f}, max:{snake_final_np.max():.1f})')
+                axes[0,4].axis('off')
+                plt.colorbar(im4, ax=axes[0,4], fraction=0.046)
+            
+            # === ROW 2: BINARY VESSELS (WITH WIDTH) ===
+            # Create binary masks (threshold at 0)
+            gt_binary = (label_2d < 0).astype(np.uint8)
+            pred_binary = (pred_2d < 0).astype(np.uint8)
+            
+            # 1. Input Image
+            axes[1,0].imshow(img_norm, cmap='gray', origin='lower')
+            axes[1,0].set_title('Input Image')
+            axes[1,0].axis('off')
+            
+            # 2. GT Binary Vessels
+            axes[1,1].imshow(gt_binary, cmap='gray', origin='lower')
+            axes[1,1].set_title(f'GT Binary\n({gt_binary.sum()} pixels)')
+            axes[1,1].axis('off')
+            
+            # 3. Prediction Binary Vessels
+            axes[1,2].imshow(pred_binary, cmap='gray', origin='lower')
+            axes[1,2].set_title(f'Pred Binary\n({pred_binary.sum()} pixels)')
+            axes[1,2].axis('off')
+            
+            # 4 & 5. Snake Binary Vessels
+            if has_snake_dm:
+                snake_initial_binary = (snake_initial_2d < 0).astype(np.uint8)
+                snake_final_binary = (snake_final_2d < 0).astype(np.uint8)
+                
+                axes[1,3].imshow(snake_initial_binary, cmap='gray', origin='lower')
+                axes[1,3].set_title(f'Snake BEFORE Binary\n({snake_initial_binary.sum()} pixels)')
+                axes[1,3].axis('off')
+                
+                axes[1,4].imshow(snake_final_binary, cmap='gray', origin='lower')
+                axes[1,4].set_title(f'Snake AFTER Binary\n({snake_final_binary.sum()} pixels)')
+                axes[1,4].axis('off')
             
             plt.tight_layout()
             plot_filename = os.path.join(plot_dir, f"training_epoch_{iterations:06d}.png")
