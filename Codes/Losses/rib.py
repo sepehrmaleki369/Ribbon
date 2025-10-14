@@ -39,7 +39,7 @@ class RibbonSnake(Snake):
         super().__init__(graph, crop, stepsz, alpha, beta, dim)
         # Additionally we sample from a normal distrubution for widths of nodes
         #self.w = torch.randn(self.s.shape[0]).abs()
-        self.w = torch.ones(self.s.shape[0])
+        self.w = 5*torch.ones(self.s.shape[0])
 
     def cuda(self):
         super().cuda()

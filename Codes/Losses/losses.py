@@ -171,6 +171,12 @@ class SnakeSimpleLoss(nn.Module):
             # Render initial distance map (before optimization)
             dmap_initial = s.render_distance_map_with_widths(g.shape[1:], max_dist=self.dmax)
             dmap_initial = dmap_initial.cpu().numpy() if self.iscuda else dmap_initial.numpy()
+            
+            # Enhance negative values 2x to match GT
+            enhancement_factor = 2.0
+            dmap_initial = np.where(dmap_initial < 0, dmap_initial * enhancement_factor, dmap_initial)
+            dmap_initial = np.clip(dmap_initial, -self.dmax, self.dmax)
+            
             snake_dmap_initial.append(torch.Tensor(dmap_initial).type(torch.float32).cuda())
 
             # Optimize snake (adjust position and width)
@@ -179,6 +185,10 @@ class SnakeSimpleLoss(nn.Module):
             # Render final distance map (after optimization)
             dmap_final = s.render_distance_map_with_widths(g.shape[1:], max_dist=self.dmax)
             dmap_final = dmap_final.cpu().numpy() if self.iscuda else dmap_final.numpy()
+            
+            # Enhance negative values 2x to match GT
+            dmap_final = np.where(dmap_final < 0, dmap_final * enhancement_factor, dmap_final)
+            dmap_final = np.clip(dmap_final, -self.dmax, self.dmax)
             
             snake_dmap.append(torch.Tensor(dmap_final).type(torch.float32).cuda())
 
