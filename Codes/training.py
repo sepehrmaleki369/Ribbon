@@ -9,6 +9,7 @@ from .scores import correctness_completeness_quality
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +37,12 @@ class Trainer(object):
 
         self.results = {"training":{"epochs":[], "results":[]},
                         "validation": {"epochs":[], "results":[]}}
+        
+        # Create datetime-based folder for this training run
+        timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        self.drive_checkpoint_dir = f"/content/drive/MyDrive/ribbs/october/RibbonSertac/{timestamp}"
+        utils.mkdir(self.drive_checkpoint_dir)
+        logger.info(f"Checkpoints will be saved to: {self.drive_checkpoint_dir}")
 
     def save_state(self, iteration):
         # Determine loss type based on iteration
@@ -49,11 +56,9 @@ class Trainer(object):
         utils.pickle_write(os.path.join(self.save_path, "results_final.pickle"),
                            self.results)
         
-        # Also save to Google Drive with iteration number and loss type
-        drive_checkpoint_path = "/content/drive/MyDrive/ribbs/october/RibbonSertac"
-        utils.mkdir(drive_checkpoint_path)
+        # Also save to Google Drive in datetime-based folder
         for name, object in self.save_objects.items():
-            checkpoint_file = os.path.join(drive_checkpoint_path, f"checkpoint_epoch_{iteration}_{loss_type}.pth")
+            checkpoint_file = os.path.join(self.drive_checkpoint_dir, f"checkpoint_epoch_{iteration}_{loss_type}.pth")
             utils.torch_save(checkpoint_file, object.state_dict())
             logger.info(f"Saved checkpoint to {checkpoint_file}")
 
@@ -266,7 +271,7 @@ class TrainingEpoch(object):
             plt.tight_layout()
             plot_filename = os.path.join(plot_dir, f"training_epoch_{iterations:06d}.png")
             plt.savefig(plot_filename, dpi=100, bbox_inches='tight')
-            plt.close(fig)
+                plt.close(fig)
             logger.info(f"Saved training plot to {plot_filename}")
 
         return {"loss": float(mean_loss/len(self.dataloader))}

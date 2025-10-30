@@ -33,10 +33,12 @@ def cmptExtGrad(snakepos,eGradIm):
     return egrad.reshape_as(snakepos)
 
 class RibbonSnake(Snake):
-    def __init__(self, graph, crop, stepsz, alpha, beta, dim):
+    def __init__(self, graph, crop, stepsz, alpha, beta, dim, endpoint_alpha_scale=0.3):
         # In the new version grad will be separate, so image gradients will not be here
         # Normal initialization of Snake super class
         super().__init__(graph, crop, stepsz, alpha, beta, dim)
+        # Endpoint smoothness reduction factor (0.3 = 70% less smoothness coupling)
+        self.endpoint_alpha_scale = endpoint_alpha_scale
         # Additionally we sample from a normal distrubution for widths of nodes
         #self.w = torch.randn(self.s.shape[0]).abs()
         self.w = 5*torch.ones(self.s.shape[0])
@@ -113,6 +115,7 @@ class RibbonSnake(Snake):
 
             grad_L = cmptExtGrad(left_pts,  gimgW)
             grad_R = cmptExtGrad(right_pts, gimgW)
+            
             # radial derivative
             grad_w = ((grad_R - grad_L) * normals).sum(dim=1, keepdim=True)
 
@@ -149,16 +152,32 @@ class RibbonSnake(Snake):
             smooth = smooth.view(K,1) # (K,1)
             internal = norm_grad + smooth # (K,1)
             alpha = grad_w.abs() / (internal.abs() + 1e-8)
+            
+            # Reduce smoothness weight for endpoints (3D case)
+            if K > 2:
+                alpha[0] = alpha[0] * self.endpoint_alpha_scale
+                alpha[-1] = alpha[-1] * self.endpoint_alpha_scale
+            
             total = grad_w + alpha * internal # (K,1)
+            
             self.w = self.w - self.stepsz * total.squeeze(1)
+            
             return self.w
 
         # internal smoothness
         internal = self.comp_second_deriv()
         alpha = grad_w.abs() / (internal.abs() + 1e-8)
+        
+        # Reduce smoothness weight for endpoints (2D case)
+        K = len(self.w)
+        if K > 2:
+            alpha[0] = alpha[0] * self.endpoint_alpha_scale
+            alpha[-1] = alpha[-1] * self.endpoint_alpha_scale
+        
         total = (grad_w + alpha * internal).squeeze(1)
-        # gradient step
+        
         self.w = self.w - self.stepsz * total
+        
         return self.w
     
     def render_distance_map_with_widths(self, size, max_dist=16.0):
