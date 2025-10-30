@@ -271,7 +271,7 @@ class TrainingEpoch(object):
             plt.tight_layout()
             plot_filename = os.path.join(plot_dir, f"training_epoch_{iterations:06d}.png")
             plt.savefig(plot_filename, dpi=100, bbox_inches='tight')
-                plt.close(fig)
+            plt.close(fig)
             logger.info(f"Saved training plot to {plot_filename}")
 
         return {"loss": float(mean_loss/len(self.dataloader))}
