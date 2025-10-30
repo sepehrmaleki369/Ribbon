@@ -463,14 +463,14 @@ If you use this code in your research, please cite:
 
 ## License
 
-[Specify your license here, e.g., MIT, Apache 2.0]
+This project is licensed under the MIT License. See the LICENSE file for details.
 
 ---
 
 ## Contact
 
 For questions or issues, please open a GitHub issue or contact:
-- Email: [your.email@domain.com]
+- Email: sepehrmaleki88@gmail.com
 - GitHub: https://github.com/sepehrmaleki369/Ribbon
 
 ---
